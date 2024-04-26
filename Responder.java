@@ -119,26 +119,33 @@ public class Responder
      * Build up a list of default responses from which we can pick
      * if we don't know what else to say.
      */
-    private void fillDefaultResponses()
-    {
+    private void fillDefaultResponses() {
         Charset charset = Charset.forName("US-ASCII");
         Path path = Paths.get(FILE_OF_DEFAULT_RESPONSES);
         try (BufferedReader reader = Files.newBufferedReader(path, charset)) {
-            String response = reader.readLine();
-            while(response != null) {
-                defaultResponses.add(response);
-                response = reader.readLine();
+            String response = "";
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    if (!response.isEmpty()) {
+                        defaultResponses.add(response.trim());
+                        response = "";
+                    }
+                } else {
+                    response += line + "\n";
+                }
             }
-        }
-        catch(FileNotFoundException e) {
+            if (!response.isEmpty()) {
+                defaultResponses.add(response.trim());
+            }
+        } catch (FileNotFoundException e) {
             System.err.println("Unable to open " + FILE_OF_DEFAULT_RESPONSES);
+        } catch (IOException e) {
+            System.err.println("A problem was encountered reading " + 
+            FILE_OF_DEFAULT_RESPONSES);
         }
-        catch(IOException e) {
-            System.err.println("A problem was encountered reading " +
-                               FILE_OF_DEFAULT_RESPONSES);
-        }
-        // Make sure we have at least one response.
-        if(defaultResponses.size() == 0) {
+
+        if (defaultResponses.isEmpty()) {
             defaultResponses.add("Could you elaborate on that?");
         }
     }
