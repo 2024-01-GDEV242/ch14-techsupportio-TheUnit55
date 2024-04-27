@@ -62,91 +62,83 @@ public class Responder
     }
 
     /**
-     * Enter all the known keywords and their associated responses
-     * into our response map.
+     * Populates the response map from tye text file where each entry consists of keywords
+     * followed by a response separated by a blank line. The method reads the 'responses.txt'
+     * file and organizes into the map.
      */
-    private void fillResponseMap()
-    {
-        responseMap.put("crash", 
-                        "Well, it never crashes on our system. It must have something\n" +
-                        "to do with your system. Tell me more about your configuration.");
-        responseMap.put("crashes", 
-                        "Well, it never crashes on our system. It must have something\n" +
-                        "to do with your system. Tell me more about your configuration.");
-        responseMap.put("slow", 
-                        "I think this has to do with your hardware. Upgrading your processor\n" +
-                        "should solve all performance problems. Have you got a problem with\n" +
-                        "our software?");
-        responseMap.put("performance", 
-                        "Performance was quite adequate in all our tests. Are you running\n" +
-                        "any other processes in the background?");
-        responseMap.put("bug", 
-                        "Well, you know, all software has some bugs. But our software engineers\n" +
-                        "are working very hard to fix them. Can you describe the problem a bit\n" +
-                        "further?");
-        responseMap.put("buggy", 
-                        "Well, you know, all software has some bugs. But our software engineers\n" +
-                        "are working very hard to fix them. Can you describe the problem a bit\n" +
-                        "further?");
-        responseMap.put("windows", 
-                        "This is a known bug to do with the Windows operating system. Please\n" +
-                        "report it to Microsoft. There is nothing we can do about this.");
-        responseMap.put("macintosh", 
-                        "This is a known bug to do with the Mac operating system. Please\n" +
-                        "report it to Apple. There is nothing we can do about this.");
-        responseMap.put("expensive", 
-                        "The cost of our product is quite competitive. Have you looked around\n" +
-                        "and really compared our features?");
-        responseMap.put("installation", 
-                        "The installation is really quite straight forward. We have tons of\n" +
-                        "wizards that do all the work for you. Have you read the installation\n" +
-                        "instructions?");
-        responseMap.put("memory", 
-                        "If you read the system requirements carefully, you will see that the\n" +
-                        "specified memory requirements are 1.5 giga byte. You really should\n" +
-                        "upgrade your memory. Anything else you want to know?");
-        responseMap.put("linux", 
-                        "We take Linux support very seriously. But there are some problems.\n" +
-                        "Most have to do with incompatible glibc versions. Can you be a bit\n" +
-                        "more precise?");
-        responseMap.put("bluej", 
-                        "Ahhh, BlueJ, yes. We tried to buy out those guys long ago, but\n" +
-                        "they simply won't sell... Stubborn people they are. Nothing we can\n" +
-                        "do about it, I'm afraid.");
+
+    private void fillResponseMap() {
+        Charset charset = Charset.forName("UTF-8");
+        Path path = Paths.get("responses.txt");
+        try (BufferedReader reader = Files.newBufferedReader(path, charset)) {
+            List<String> keys = new ArrayList<>();
+            StringBuilder response = new StringBuilder();
+            boolean readingResponse = false;
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    if (readingResponse && !keys.isEmpty() && response.length() > 0) {
+                        String responseText = response.toString().trim();
+                        for (String key : keys) {
+                            responseMap.put(key.trim().toLowerCase(), responseText); 
+                        }
+                        keys.clear();
+                        response.setLength(0);
+                        readingResponse = false;
+                    }
+                } else if (!readingResponse) {
+                    keys = new ArrayList<>(Arrays.asList(line.split(",\\s*")));
+                    readingResponse = true;
+                } else {
+                    response.append(line).append(System.lineSeparator());
+                }
+            }
+            if (readingResponse && !keys.isEmpty() && response.length() > 0) {
+                String responseText = response.toString().trim();
+                for (String key : keys) {
+                    responseMap.put(key.trim().toLowerCase(), responseText);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.err.println("File not found: " + path.toAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("Error reading file: " + path.toAbsolutePath());
+        }
     }
 
     /**
-     * Build up a list of default responses from which we can pick
-     * if we don't know what else to say.
+     * Fills the list of default responses from the file. Thw method reads the 'default.txt'
+     * file, with adding separated by blank lines to the list of default responses.
      */
     private void fillDefaultResponses() {
         Charset charset = Charset.forName("US-ASCII");
         Path path = Paths.get(FILE_OF_DEFAULT_RESPONSES);
         try (BufferedReader reader = Files.newBufferedReader(path, charset)) {
-            String response = "";
+            StringBuilder response = new StringBuilder();
             String line;
+            boolean LineWasBlank = true;
+
             while ((line = reader.readLine()) != null) {
                 if (line.trim().isEmpty()) {
-                    if (!response.isEmpty()) {
-                        defaultResponses.add(response.trim());
-                        response = "";
+                    if (!LineWasBlank) {
+                        defaultResponses.add(response.toString().trim());
+                        response.setLength(0);
                     }
+                    LineWasBlank = true;
                 } else {
-                    response += line + "\n";
+                    if (response.length() > 0) {
+                        response.append(System.lineSeparator());
+                    }
+                    response.append(line);
+                    LineWasBlank = false;
                 }
             }
-            if (!response.isEmpty()) {
-                defaultResponses.add(response.trim());
+            if (!LineWasBlank && response.length() > 0) {
+                defaultResponses.add(response.toString().trim());
             }
-        } catch (FileNotFoundException e) {
-            System.err.println("Unable to open " + FILE_OF_DEFAULT_RESPONSES);
         } catch (IOException e) {
-            System.err.println("A problem was encountered reading " + 
-            FILE_OF_DEFAULT_RESPONSES);
-        }
-
-        if (defaultResponses.isEmpty()) {
-            defaultResponses.add("Could you elaborate on that?");
+            e.printStackTrace();
         }
     }
 
